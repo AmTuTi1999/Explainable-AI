@@ -9,7 +9,7 @@ def data_augment(
         x_batch: pd.DataFrame, 
         y_batch: pd.DataFrame,
         model: Callable,
-        immutable_columns: list[str] = [],
+        immutable_columns: list[str] = None,
         number_of_iterations: int = 10,
         numerical_perturb_func: Callable = gaussian_2d,
         categorical_perturb_func: Callable = categorical_2d,
@@ -17,7 +17,7 @@ def data_augment(
     assert(isinstance(x_batch, pd.DataFrame))
 
     categorical_columns, numerical_columns = get_categorical_and_numerical_columns(x_batch)
-    
+    print(x_batch.columns)
     numerical_synthetic_array = []
     categorical_synthetic_array = []
     immutable_synthetic_array = []
@@ -26,7 +26,9 @@ def data_augment(
     for _ in range(number_of_iterations):
         numerical_synthetic_array.append(numerical_perturb_func(x_batch[numerical_columns]))
         categorical_synthetic_array.append(categorical_perturb_func(x_batch[categorical_columns]))
-        immutable_synthetic_array.append(np.array(x_batch[immutable_columns]))
+        print(immutable_columns)
+        if immutable_columns is not None:
+            immutable_synthetic_array.append(np.array(x_batch[immutable_columns]))
 
     synthetic_df[numerical_columns] = pd.DataFrame(
         np.concatenate(numerical_synthetic_array, axis=0), columns=numerical_columns
@@ -34,9 +36,10 @@ def data_augment(
     synthetic_df[categorical_columns] = pd.DataFrame(
         np.concatenate(categorical_synthetic_array, axis=0), columns=categorical_columns
     )
-    synthetic_df[immutable_columns] = pd.DataFrame(
-        np.concatenate(immutable_synthetic_array, axis=0), columns=immutable_columns
-    )
+    if immutable_columns is not None:
+        synthetic_df[immutable_columns] = pd.DataFrame(
+            np.concatenate(immutable_synthetic_array, axis=0), columns=immutable_columns
+        )
 
     synthetic_labels = pd.DataFrame(model.predict(synthetic_df), columns= ['labels'])
 

@@ -1,9 +1,7 @@
 import pandas as pd
 import logging
-from typing import Callable
-import os 
-from src.explainers.helpers.helpers import extend_dataframe, get_opposite_class
-from src.explainers.counterfactual_based_explainers.preprocess.data_augmentation import data_augment
+from typing import Callable 
+from src.explainers.helpers.helpers import get_opposite_class
 from src.explainers.counterfactual_based_explainers.counterfactual_explainer_base import CounterfactualExplainerBase
 from src.explainers.counterfactual_based_explainers.MACE.knn import build_knn_tree, find_k_nearest_neighbors
 from src.explainers.counterfactual_based_explainers.MACE.create_env import BuildModelEnv
@@ -43,6 +41,7 @@ class MACE(CounterfactualExplainerBase):
             y_batch=y_batch,
             top_num_features=top_num_features,
             top_num_feature_values= top_num_feature_values,
+            immutable_features=immutable_features,
             num_points_neighbourhood=num_points_neighbourhood,
             categorical_features = categorical_features,
             feature_names = feature_names,
@@ -51,13 +50,7 @@ class MACE(CounterfactualExplainerBase):
         self.num_points_neighbourhood = num_points_neighbourhood
         self.model = model
         self.regressor_model = regressor_model
-        self.x_batch = x_batch
-        self.y_batch = pd.DataFrame(y_batch.values, columns=['labels'])
         self.columns = x_batch.columns
-        # if categorical_features is not None:
-        #     self.categorical_features = []
-        # else:
-        #     self.categorical_features = categorical_features
         self.s = top_num_features
         self.m = top_num_feature_values
         self.gamma = gamma
@@ -70,35 +63,19 @@ class MACE(CounterfactualExplainerBase):
         self.min_search_radius = min_search_radius
         self.refine_epochs = refine_epochs
         self.immutable_features = immutable_features
-        synthetic_data, synthetic_labels = data_augment(
-            x_batch, self.y_batch, model, immutable_columns=immutable_features
-            )
-        print(type(synthetic_data))
-        print(type(y_batch))
-        self.augmented_data = pd.DataFrame(
-            self.discretizer.discretize(extend_dataframe(x_batch, synthetic_data).to_numpy()), 
-            columns=x_batch.columns
-        )
-        print(extend_dataframe(self.y_batch, synthetic_labels).to_numpy().shape)
-        self.augmented_labels = extend_dataframe(self.y_batch, synthetic_labels)
             
-# TODO add data pipeline: adds synthetic data, saves columns, scales, discretizes, make it optional and choosable, transforms to numpy array
     def __call__(
             self, 
             num_explanations,
             counterfactual_target_class,
         ):
-        knn_tree, neighbor_data = build_knn_tree(
-            self.augmented_data, self.augmented_labels, counterfactual_target_class, self.immutable_features, self.num_points_neighbourhood
-            )
         self.explain_batch(
-            num_explanations, neighbor_data, counterfactual_target_class
+            num_explanations, counterfactual_target_class
             )
 
     def explain_instance(
             self,
             input_vector,
-            neighbor_data,
             counterfactual_target_class: int | str = "opposite",
         ):
         """_summary_
@@ -114,9 +91,9 @@ class MACE(CounterfactualExplainerBase):
         input_vector = pd.DataFrame(input_vector.reshape((1,-1)), columns=self.columns)
         if counterfactual_target_class == 'opposite':
             logging.info("Calling Explainer for Binary Class")
-            counterfactual_target_class = [0]
+            counterfactual_target_class = get_opposite_class(instance_class)
         knn_tree, neighbor_data = build_knn_tree(
-            self.augmented_data, self.augmented_labels, counterfactual_target_class, self.immutable_features, self.num_points_neighbourhood
+            self.x_batch, self.y_batch, counterfactual_target_class, self.immutable_features, self.num_points_neighbourhood
             )
         nearest_neighbours, _ = find_k_nearest_neighbors(neighbor_data, knn_tree, input_vector, 10, self.immutable_features) # TODO change magic number
         _ , selected_feature_values = counterfactual_feature_selection(neighbor_data.to_numpy(), nearest_neighbours, input_vector.to_numpy(), self.s, self.m)
@@ -140,7 +117,6 @@ class MACE(CounterfactualExplainerBase):
     def explain_batch(
             self,
             num_explanations,
-            neighbor_data,
             counterfactual_target_class,
         ):
         """_summary_
@@ -150,7 +126,7 @@ class MACE(CounterfactualExplainerBase):
             counterfactual_target_class (_type_): _description_
         """        
         for i in range(num_explanations):
-            self.explain_instance(self.x_batch.iloc[i], neighbor_data, counterfactual_target_class)
+            self.explain_instance(self.x_batch.iloc[i], counterfactual_target_class)
     
         
     def transform_to_df(self, X):
@@ -201,8 +177,7 @@ def test_mace():
     # Test explain_instance method
     input_vector = pd.Series({'age': 30, 'income': 55000, 'education': 14})
     counterfactuals = mace.explain_instance(
-        input_vector=input_vector, # For this test, the knn_tree is not used
-        neighbor_data=None,  # For this test, the neighbor_data is not used
+        input_vector=input_vector,   # For this test, the neighbor_data is not used
         counterfactual_target_class='opposite'
     )
 

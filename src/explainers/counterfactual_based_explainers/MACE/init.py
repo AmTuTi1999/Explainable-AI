@@ -108,8 +108,9 @@ def gradient_less_descent(classifier, x, x_prime_list, R, r, T, counterfactual_t
                 for i in C:
                     a = np.random.normal(0, 1)  
                     z_k[i] = float(np.clip(z[i] + a * r_k, 0, 1))
+                    print('ffffff')
                     print(classifier(np.array(z_k).reshape((1,-1))))
-                if classifier(np.array(z_k).reshape((1,-1)))[counterfactual_target_class]> 0.5:
+                if classifier(np.array(z_k).reshape((1,-1)))> 0.5:
                     T_t.append(z_k)
             if T_t:
                 best_z = min(T_t, key=lambda z_t: objective_function(x, z_t, C))
@@ -121,17 +122,3 @@ def gradient_less_descent(classifier, x, x_prime_list, R, r, T, counterfactual_t
             optimized_examples.append(z)
     
     return optimized_examples
-
-# Example usage
-# def example_classifier(z):
-#     """ Example classifier function. Replace with actual classifier. """
-#     return np.mean(z)  # Placeholder classifier
-
-# x = [0.5, 0.5, 0.5]  # Original instance
-# x_prime_list = [[0.6, 0.4, 0.5], [0.7, 0.5, 0.3]]  # List of counterfactual examples
-# R = 0.1
-# r = 0.01
-# T = 10
-
-# optimized_examples = gradient_less_descent(example_classifier, x, x_prime_list, R, r, T, 0)
-# print(optimized_examples)

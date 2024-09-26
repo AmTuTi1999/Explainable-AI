@@ -114,8 +114,8 @@ def get_opposite_class(binary_class):
     Returns:
     - The opposite binary class (1 if input is 0, 0 if input is 1).
     """
-    if binary_class not in [0, 1]:
+    if binary_class[0] not in [0, 1]:
         raise ValueError("Input must be either 0 or 1 for binary classification.")
     
-    return 1 - binary_class
+    return 1 - binary_class[0]
 
