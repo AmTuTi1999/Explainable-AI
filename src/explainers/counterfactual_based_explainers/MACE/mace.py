@@ -39,14 +39,11 @@ class MACE(CounterfactualExplainerBase):
             model=model, 
             x_batch=x_batch,
             y_batch=y_batch,
-            top_num_features=top_num_features,
-            top_num_feature_values= top_num_feature_values,
             immutable_features=immutable_features,
-            num_points_neighbourhood=num_points_neighbourhood,
             categorical_features = categorical_features,
             feature_names = feature_names,
             discretizer=discretizer
-        )
+    )
         self.num_points_neighbourhood = num_points_neighbourhood
         self.model = model
         self.regressor_model = regressor_model
@@ -85,9 +82,7 @@ class MACE(CounterfactualExplainerBase):
             counterfactual_target_class (int | str, optional): _description_. Defaults to "opposite".
         """      
         instance_class = self.model.predict(input_vector.to_frame().T)
-        print(instance_class)
-        input_vector, _ = self.explainer_first_step(input_vector)
-        print(input_vector.shape)
+        input_vector = self.explainer_first_step(input_vector)
         input_vector = pd.DataFrame(input_vector.reshape((1,-1)), columns=self.columns)
         if counterfactual_target_class == 'opposite':
             logging.info("Calling Explainer for Binary Class")
@@ -139,55 +134,3 @@ class MACE(CounterfactualExplainerBase):
             _type_: _description_
         """        
         return pd.DataFrame(X, columns=self.columns)
-
-
-from sklearn.linear_model import LogisticRegression  
-
-def test_mace():
-    # Sample Data
-    x_batch = pd.DataFrame({
-        'age': [25, 30, 22, 40, 35],
-        'income': [50000, 60000, 45000, 80000, 75000],
-        'education': [12, 16, 14, 18, 16]
-    })
-    y_batch = pd.Series([0, 1, 1, 0, 1])
-
-    # Initialize mock model and MACE instance
-    model = LogisticRegression()
-    model.fit(x_batch[['age', 'income', 'education']], y_batch)
-    mace = MACE(
-        model=model,
-        x_batch=x_batch,
-        y_batch=y_batch,
-        top_num_features=2,
-        top_num_feature_values=3,
-        num_points_neighbourhood=3,
-        immutable_features=['age'],
-        gamma=0.1,
-        alpha=0.1,
-        num_episodes=100,
-        lambdas=(0.1, 0.1),
-        sparsity_constraint=15,
-        num_counterfactuals=5,
-        max_search_radius=0.1,
-        min_search_radius=0.01,
-        refine_epochs=10
-    )
-
-    # Test explain_instance method
-    input_vector = pd.Series({'age': 30, 'income': 55000, 'education': 14})
-    counterfactuals = mace.explain_instance(
-        input_vector=input_vector,   # For this test, the neighbor_data is not used
-        counterfactual_target_class='opposite'
-    )
-
-    # Print results
-    print("Counterfactuals:")
-    print(counterfactuals)
-
-    # Validate outputs (add more validations as needed)
-    assert isinstance(counterfactuals, pd.DataFrame), "Counterfactuals should be a DataFrame"
-    assert len(counterfactuals) == mace.b, f"Expected {mace.b} counterfactuals"
-
-if __name__ == "__main__":
-    test_mace()

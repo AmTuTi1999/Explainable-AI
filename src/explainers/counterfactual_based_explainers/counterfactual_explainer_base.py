@@ -12,67 +12,43 @@ from src.explainers.helpers.helpers import extend_dataframe
 from src.explainers.counterfactual_based_explainers.preprocess.data_augmentation import data_augment
 
 class CounterfactualExplainerBase():
+    """_summary_
+    """    
     def __init__(
         self,
-        model, 
+        model: Callable, 
         x_batch,
         y_batch,
-        top_num_features: int = 5,
-        top_num_feature_values:int = 10,
-        num_points_neighbourhood: int = 100,
         categorical_features: list[str] = None, 
         categorical_names = None,
         immutable_features: list[str]= None, 
         feature_names = None,
-        regressor_model: Callable = None,   
-        gamma: float = 0.1,
-        alpha: float = 0.1,
-        num_episodes: int = 100,
-        lambdas: tuple = (0.1, 0.1),
-        sparsity_constraint: int =  15,
-        num_counterfactuals: int = 5,
-        max_search_radius: float = 0.1, 
-        min_search_radius: float = 0.01, 
-        refine_epochs: int = 10,
         x_batch_stats: dict = None,
-        discretize_continuous: bool = True,
+        discretize_continuous: bool = False,
         discretizer: str = "decile",
         random_state: int = 42,
-        epsilon: float = 1e-8,
-        density_threshold = 0.1,  
-        number_of_paths = 5, 
-        classification_threshold = 0.5,  
-        density_estimator = None, 
-        kde_bandwidth = None, 
-        knn_number_of_points = None, 
-        knnK = None, 
-        knn_volume = None
     ):
-        self.t_d = density_threshold
-        self.n = number_of_paths
-        self.t_p = classification_threshold
-        self.density_estimator = density_estimator
-        self.bandwidth = kde_bandwidth
-        self.knnk = knnK
-        self.volume = knn_volume
-        self.eps = epsilon
-        self.number_of_point_knn = knn_number_of_points
-        self.num_points_neighbourhood = num_points_neighbourhood
+        """_summary_
+
+        Args:
+            model (Callable): _description_
+            x_batch (_type_): _description_
+            y_batch (_type_): _description_
+            categorical_features (list[str], optional): _description_. Defaults to None.
+            categorical_names (_type_, optional): _description_. Defaults to None.
+            immutable_features (list[str], optional): _description_. Defaults to None.
+            feature_names (_type_, optional): _description_. Defaults to None.
+            x_batch_stats (dict, optional): _description_. Defaults to None.
+            discretize_continuous (bool, optional): _description_. Defaults to True.
+            discretizer (str, optional): _description_. Defaults to "decile".
+            random_state (int, optional): _description_. Defaults to 42.
+
+        Raises:
+            ValueError: _description_
+        """        
         self.model = model
-        self.regressor_model = regressor_model
-        self.s = top_num_features
         self.discretize_continuous = discretize_continuous
-        self.m = top_num_feature_values
-        self.gamma = gamma
-        self.alpha = alpha
-        self.num_episodes = num_episodes
-        self.lambda1, self.lambda2 = lambdas
-        self.w = sparsity_constraint
-        self.b = num_counterfactuals
         self.x_batch_stats = x_batch_stats
-        self.max_search_radius = max_search_radius
-        self.min_search_radius = min_search_radius
-        self.refine_epochs = refine_epochs
         self.random_state = random_state
         self.categorical_names= categorical_names or {},
                     
@@ -213,10 +189,10 @@ class CounterfactualExplainerBase():
 
         if sp.sparse.issparse(input_vector):
             values = self.convert_and_round(input_vector.data)
-            feature_indexes = input_vector.indices
+            #feature_indexes = input_vector.indices
         else:
             values = self.convert_and_round(input_vector)
-            feature_indexes = None
+            #feature_indexes = None
 
         for i in self.categorical_features:
             if self.discretizer is not None and i in self.discretizer.lambdas:
@@ -226,17 +202,19 @@ class CounterfactualExplainerBase():
                 name = self.categorical_names[i][name]
             feature_names[i] = '%s=%s' % (feature_names[i], name)
             values[i] = 'True'
-        categorical_features = self.categorical_features
+        #categorical_features = self.categorical_features
 
         discretized_feature_names = None
         if self.discretize_continuous and self.discretizer is not None:
-            categorical_features = self.x_batch.columns
+            #categorical_features = self.x_batch.columns
             discretized_instance = self.discretizer.discretize(np.array(input_vector))
             discretized_feature_names = copy.deepcopy(feature_names)
             for f in self.discretizer.names:
                 discretized_feature_names[f] = self.discretizer.names[f][int(
                         discretized_instance[f])]
-        return discretized_instance, (categorical_features, discretized_feature_names, feature_indexes)
+            return discretized_instance
+        else:
+            return input_vector
     
     def explain_batch(self, num_explanations, counterfactual_target_class):
         pass
