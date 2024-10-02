@@ -16,6 +16,11 @@ class CERTIFAI(CounterfactualExplainerBase):
             x_batch,
             y_batch,
             distance_function, 
+            categorical_features,
+            feature_names,
+            immutable_features,
+            discretize_continuous = False,
+            discretizer = 'decile',
             mutation_rate=0.1, 
             crossover_rate=0.5, 
             generations=100, 
@@ -36,7 +41,12 @@ class CERTIFAI(CounterfactualExplainerBase):
         super().__init__(
             model=model,
             x_batch=x_batch,
-            y_batch=y_batch 
+            y_batch=y_batch, 
+            immutable_features=immutable_features,
+            categorical_features = categorical_features,
+            feature_names = feature_names,
+            discretize_continuous=discretize_continuous,
+            discretizer=discretizer
         )
         self.model = model
         self.distance_function = distance_function# predefined space for each feature

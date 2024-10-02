@@ -1,0 +1,34 @@
+data:
+  url: "https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data"
+  column_names:
+    - age
+    - sex
+    - cp
+    - trestbps
+    - chol
+    - fbs
+    - restecg
+    - thalach
+    - exang
+    - oldpeak
+    - slope
+    - ca
+    - thal
+    - target
+  test_size: 0.2
+  random_seed: 42
+  categorical_columns: 
+    - sex
+    - cp
+    - fbs
+    - restecg
+    - exang
+    - slope
+    - thal
+    - ca
+  numerical_columns:
+    - age
+    - trestbps
+    - chol
+    - thalach
+    - oldpeak

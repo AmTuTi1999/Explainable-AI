@@ -1,6 +1,8 @@
-import pandas as pd
+"""MACE"""
 import logging
 from typing import Callable 
+
+import pandas as pd
 from src.explainers.helpers.helpers import get_opposite_class
 from src.explainers.counterfactual_based_explainers.counterfactual_explainer_base import CounterfactualExplainerBase
 from src.explainers.counterfactual_based_explainers.MACE.knn import build_knn_tree, find_k_nearest_neighbors
@@ -17,11 +19,11 @@ class MACE(CounterfactualExplainerBase):
         model, 
         x_batch,
         y_batch,
-        top_num_features,
-        top_num_feature_values,
-        num_points_neighbourhood,
-        categorical_features = None,
-        feature_names = None,
+        top_num_features: int,
+        top_num_feature_values: int,
+        num_points_neighbourhood: int,
+        categorical_features: list[str] = None,
+        feature_names: list[str] = None,
         immutable_features: list[str]= None,  
         regressor_model: Callable = None,   
         gamma: float = 0.1,
@@ -33,6 +35,7 @@ class MACE(CounterfactualExplainerBase):
         max_search_radius: float = 0.1, 
         min_search_radius: float = 0.01, 
         refine_epochs: int = 10,
+        discretize_continuous = True,
         discretizer: str = 'decile'
     ):
         super().__init__(
@@ -42,6 +45,7 @@ class MACE(CounterfactualExplainerBase):
             immutable_features=immutable_features,
             categorical_features = categorical_features,
             feature_names = feature_names,
+            discretize_continuous=discretize_continuous,
             discretizer=discretizer
     )
         self.num_points_neighbourhood = num_points_neighbourhood

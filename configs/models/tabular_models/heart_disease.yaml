@@ -1,0 +1,30 @@
+_target_: src.models.tabularmodels.HeartDiseaseNeuralNetwork
+model:
+  name: "HeartDiseaseNeuralNetwork"
+  model_param:
+    input_size: 13      
+    hidden_layers: [32, 64, 32]  
+    output_size: 1         
+    activation: "relu"     
+    dropout: 0.2            
+    learning_rate: 0.001   
+    optimizer: "adam"        
+    epochs: 50              
+    batch_size: 32          
+    loss_function: "binary_crossentropy" 
+
+  columns:
+    input_columns:  
+      - age
+      - sex
+      - cp
+      - trestbps
+      - chol
+      - fbs
+      - restecg
+      - thalach
+      - exang
+      - oldpeak
+      - slope
+      - ca
+      - thal

@@ -17,22 +17,30 @@ class FACE(CounterfactualExplainerBase):
             model, 
             x_batch,
             y_batch,
-            epsilon, 
-            density_threshold,  
-            number_of_paths, 
-            classification_threshold = 0.5, 
-            immutable_features= None, 
-            density_estimator = None, 
-            kde_bandwidth = None, 
-            knn_number_of_points = None, 
-            knnK = None, 
-            knn_volume = None
+            epsilon= 0.1, 
+            density_threshold = 0.7,  
+            number_of_paths: int= 5,
+            categorical_features: list[str] = None,
+            feature_names: dict= None,
+            discretize_continuous: bool = False,
+            discretizer: str = 'decile', 
+            classification_threshold: float = 0.5, 
+            immutable_features: list[str]= None, 
+            density_estimator: str = 'kde', 
+            kde_bandwidth: float = 0.1, 
+            knn_number_of_points: int = 5, 
+            knnK: int = 5, 
+            knn_volume: float = 0.3
     ):
         super().__init__(
             model= model,
             x_batch= x_batch,
             y_batch= y_batch,
             immutable_features= immutable_features,
+            categorical_features = categorical_features,
+            feature_names = feature_names,
+            discretize_continuous=discretize_continuous,
+            discretizer=discretizer
     )
         self.model = model
         self.t_d = density_threshold
@@ -111,5 +119,4 @@ class FACE(CounterfactualExplainerBase):
         )
 
         counterfactuals = self.x_batch.iloc[counterfactuals_indices]
-        print(counterfactuals_indices)
         return counterfactuals, graph

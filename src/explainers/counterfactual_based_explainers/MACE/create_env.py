@@ -28,11 +28,9 @@ class BuildModelEnv:
     def predict(self, x: np.ndarray):
         """
         predict
-        """    
-        print(x)
+        """  
         x = self.discretizer.undiscretize(x)
         x =x.reshape(1,-1)
-        print(x)
         return self.model.predict_proba(x)[0][self.counterfactual_class]
     
     def step(self, x_prime):

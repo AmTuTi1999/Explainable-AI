@@ -156,6 +156,7 @@ class CounterfactualExplainerBase():
             self.scaler.mean_[feature] = 0
             self.scaler.scale_[feature] = 1
 
+
     @staticmethod
     def convert_and_round(values):
         return ['%.2f' % v for v in values]
