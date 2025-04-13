@@ -1,0 +1,9 @@
+clear: 
+  _target_: src.explainers.counterfactual_based_explainers.CLEAR.clear.CLEAR
+  num_points_neighbourhood: null
+  categorical_names: null
+  discretize_continuous: False
+  discretizer: "decile"
+  random_state: 42
+  data_augmentation: False
+  regressor_model: null

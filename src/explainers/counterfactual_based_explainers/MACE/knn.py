@@ -23,15 +23,10 @@ def build_knn_tree(
     """
     # Ensure index alignment between data and labels
     labels = labels.reindex(data.index)
-    
     subset_data = data.loc[labels['labels'] == counterfactual_class[0]].reset_index(drop = True)
     non_immutable_columns = [col for col in data.columns if col not in immutable_columns]
     knn_model = NearestNeighbors(n_neighbors=n_neighbors)
     knn_model.fit(subset_data[non_immutable_columns].values)
-
-    # Select the subset of data where labels match the counterfactual_class
-    print(labels.columns)
-    print(subset_data.index)
 
     return knn_model, subset_data
 

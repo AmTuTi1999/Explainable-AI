@@ -1,0 +1,9 @@
+certifai: 
+  _target_: src.explainers.counterfactual_based_explainers.CERTIFAI.certifai.CERTIFAI
+  distance_function: l1
+  discretize_continuous: false
+  discretizer: decile
+  mutation_rate: 0.1
+  crossover_rate: 0.5
+  generations: 100
+  population_size: 50

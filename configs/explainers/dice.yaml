@@ -1,0 +1,5 @@
+dice:
+  _target_: src.explainers.counterfactual_based_explainers.DICE.dice.DICE
+  num_counterfactuals: 5
+  discretize_continuous: false
+  discretizer: 'decile'

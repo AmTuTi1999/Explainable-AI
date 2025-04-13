@@ -1,0 +1,16 @@
+mace:  
+  _target_: src.explainers.counterfactual_based_explainers.MACE.mace.MACE
+  top_num_features: 5
+  top_num_feature_values: 5
+  num_points_neighbourhood: 5
+  gamma: 0.1
+  alpha: 0.1
+  num_episodes: 5
+  lambdas: [0.1, 0.1]
+  sparsity_constraint: 15
+  num_counterfactuals: 5
+  max_search_radius: 0.1
+  min_search_radius: 0.01
+  refine_epochs: 10
+  discretize_continuous: False
+  discretizer: 'decile'

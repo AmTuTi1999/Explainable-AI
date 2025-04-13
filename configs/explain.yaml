@@ -1,0 +1,16 @@
+# when using explain, please set the model to be the same as the one used for training
+defaults:
+  - _self_
+  - hydra: hydra
+  - data: heart_disease
+  - model: tabular_models/heart_disease.yaml
+  - explainers:
+      - mace.yaml
+      - face.yaml
+      - clear.yaml
+      - certifai.yaml
+  - experiment: counterfactual_xai/counterfactual_explanations_v0
+
+seed : 42
+val_size: 0.2
+test_size: 0.2

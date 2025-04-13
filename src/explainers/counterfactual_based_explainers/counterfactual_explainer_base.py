@@ -1,6 +1,7 @@
 import copy
 import collections
-from typing import Callable
+from typing import Callable, Union
+import logging
 
 import sklearn
 import torch
@@ -10,23 +11,22 @@ import scipy as sp
 import lime.discretize as dct
 from src.explainers.helpers.helpers import extend_dataframe
 from src.explainers.counterfactual_based_explainers.preprocess.data_augmentation import data_augment
+from src.explainers.counterfactual_explanation import CounterfactualExplanation
+from tqdm import tqdm
 
 class CounterfactualExplainerBase():
     """_summary_
     """    
     def __init__(
         self,
-        model: Callable, 
-        x_batch,
-        y_batch,
-        categorical_features: list[str] = None, 
-        categorical_names = None,
-        immutable_features: list[str]= None, 
-        feature_names = None,
-        x_batch_stats: dict = None,
         discretize_continuous: bool = False,
         discretizer: str = "decile",
         random_state: int = 42,
+        data_augmentation: bool = False,
+        feature_names = None,
+        categorical_features: list[str] = None, 
+        categorical_names = None,
+        immutable_features: list[str]= None, 
     ):
         """_summary_
 
@@ -46,77 +46,94 @@ class CounterfactualExplainerBase():
         Raises:
             ValueError: _description_
         """        
-        self.model = model
+        self.categorical_features = categorical_features or []
+        self.immutable_features = immutable_features or []
+        self.feature_names = feature_names or []
+        self.discretizer = discretizer
         self.discretize_continuous = discretize_continuous
-        self.x_batch_stats = x_batch_stats
         self.random_state = random_state
         self.categorical_names= categorical_names or {},
+        self.data_augmentation = data_augmentation
                     
 
+
+    @staticmethod
+    def convert_and_round(values):
+        return ['%.2f' % v for v in values]
+
+
+    def _check_and_preprocess_data(
+            self, 
+            model: Callable,
+            x_batch, 
+            y_batch,
+            x_batch_stats=None,
+            ):
+        """
+            Method to preprocess the batch data
+        """ 
         if isinstance(x_batch, pd.DataFrame):
             self.columns = x_batch.columns
         
         if isinstance(y_batch, pd.DataFrame):
-            y_batch = pd.DataFrame(y_batch.values, columns=['labels'])
+            self.y_batch = pd.DataFrame(y_batch.values, columns=['labels'])
 
         if isinstance(y_batch, np.ndarray):
-            y_batch = pd.DataFrame(y_batch, columns=['labels'])
+            self.y_batch = pd.DataFrame(y_batch, columns=['labels'])
 
         if isinstance(y_batch, torch.Tensor):
-            y_batch= pd.DataFrame(y_batch.numpy(), columns= ['labels'])
+            self.y_batch= pd.DataFrame(y_batch.numpy(), columns= ['labels'])
 
         if isinstance(y_batch, pd.Series):
-            y_batch = pd.DataFrame(y_batch.values, columns= ['labels'])
+            self.y_batch = pd.DataFrame(y_batch.values, columns= ['labels'])
         
         if isinstance(x_batch, np.ndarray):
-            x_batch = pd.DataFrame(x_batch)
+            self.x_batch = pd.DataFrame(x_batch)
             self.columns = list(range(x_batch.shape[1]))
 
         if isinstance(x_batch, torch.Tensor):
-            x_batch = pd.DataFrame(x_batch.numpy())
+            self.x_batch = pd.DataFrame(x_batch.numpy())
             self.columns = list(range(x_batch.shape[1]))
+        if self.data_augmentation:
+            synthetic_data, synthetic_labels = data_augment(
+                self.x_batch, self.y_batch, model, immutable_columns=self.immutable_features
+                )
+            self.x_batch, self.y_batch = extend_dataframe(self.x_batch, synthetic_data), extend_dataframe(self.y_batch, synthetic_labels)
+        if x_batch_stats:
+            self.validate_x_batch_stats(x_batch_stats)
 
-        synthetic_data, synthetic_labels = data_augment(
-            x_batch, y_batch, model, immutable_columns=immutable_features
-            )
-        self.x_batch, self.y_batch = extend_dataframe(x_batch, synthetic_data), extend_dataframe(y_batch, synthetic_labels)
-        print(f'x_batch: {len(self.x_batch)}')
-        print(f'y_batch: {len(self.y_batch)}')
-        if self.x_batch_stats:
-            self.validate_x_batch_stats(self.x_batch_stats)
+        if self.categorical_features is None:
+            self.categorical_features = []
+        if self.feature_names is None:
+            self.feature_names = [str(i) for i in range(x_batch.shape[1])]
 
-        if categorical_features is None:
-            categorical_features = []
-        if feature_names is None:
-            feature_names = [str(i) for i in range(x_batch.shape[1])]
-
-        self.categorical_features = list(categorical_features)
-        self.feature_names = list(feature_names)
+        self.categorical_features = list([int(i) for i in range(len(self.categorical_features))])
+        self.feature_names = list(self.columns)
 
         self.discretizer = None
-        if discretize_continuous and not sp.sparse.issparse(self.x_batch):
+        if self.discretize_continuous and not sp.sparse.issparse(self.x_batch):
             # Set the discretizer if training data stats are provided
-            if self.x_batch_stats:
+            if x_batch_stats:
                 discretizer = dct.StatsDiscretizer(
                     self.x_batch, self.categorical_features,
-                    self.feature_names, labels=y_batch,
-                    data_stats=self.x_batch_stats,
+                    self.feature_names, labels=self.y_batch,
+                    data_stats=x_batch_stats,
                     random_state=self.random_state)
 
             if discretizer == 'quartile':
                 self.discretizer = dct.QuartileDiscretizer(
                         self.x_batch.to_numpy(), self.categorical_features,
-                        self.feature_names, labels=y_batch,
+                        self.feature_names, labels=self.y_batch,
                         random_state=self.random_state)
             elif discretizer == 'decile':
                 self.discretizer = dct.DecileDiscretizer(
                         self.x_batch.to_numpy(), self.categorical_features,
-                        self.feature_names, labels=y_batch,
+                        self.feature_names, labels=self.y_batch,
                         random_state=self.random_state)
             elif discretizer == 'entropy':
                 self.discretizer = dct.EntropyDiscretizer(
                         self.x_batch.to_numpy(), self.categorical_features,
-                        self.feature_names, labels=y_batch,
+                        self.feature_names, labels=self.y_batch,
                         random_state=self.random_state)
             elif isinstance(discretizer, dct.BaseDiscretizer):
                 self.discretizer = discretizer
@@ -124,25 +141,20 @@ class CounterfactualExplainerBase():
                 raise ValueError('''Discretizer must be 'quartile',''' +
                                  ''' 'decile', 'entropy' or a''' +
                                  ''' BaseDiscretizer instance''')
-            self.categorical_features = list(range(x_batch.shape[1]))
+            self.categorical_features = list(range(self.x_batch.shape[1]))
 
             # Get the discretized_x_batch when the stats are not provided
             discretized_x_batch = self.discretizer.discretize(
                 np.array(self.x_batch))
             self.x_batch = pd.DataFrame(discretized_x_batch, columns=self.columns)
-
-        # Though set has no role to play if training data stats are provided
-        self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
-        self.scaler.fit(self.x_batch)
         self.feature_values = {}
         self.feature_frequencies = {}
-
         for feature in self.categorical_features:
             if x_batch_stats is None:
                 if self.discretizer is not None:
                     column = discretized_x_batch[:, feature]
                 else:
-                    column = self.x_batch[:, feature]
+                    column = self.x_batch[feature]
 
                 feature_count = collections.Counter(column)
                 values, frequencies = map(list, zip(*(sorted(feature_count.items()))))
@@ -153,13 +165,6 @@ class CounterfactualExplainerBase():
             self.feature_values[feature] = values
             self.feature_frequencies[feature] = (np.array(frequencies) /
                                                  float(sum(frequencies)))
-            self.scaler.mean_[feature] = 0
-            self.scaler.scale_[feature] = 1
-
-
-    @staticmethod
-    def convert_and_round(values):
-        return ['%.2f' % v for v in values]
 
     @staticmethod
     def validate_x_batch_stats(x_batch_stats):
@@ -175,6 +180,37 @@ class CounterfactualExplainerBase():
     def __call__(self, *args, **kwds):
         pass
 
+    def _init_explainer(self, model, x_batch, y_batch, x_batch_stats=None):
+        """_summary_
+
+        Args:
+            x_batch (_type_): _description_
+            y_batch (_type_): _description_
+        """        
+        self.model = model
+        self._check_and_preprocess_data(
+            model=model,
+            x_batch=x_batch,
+            y_batch=y_batch,
+            x_batch_stats=x_batch_stats,
+        )
+
+    def init_explainer(
+            self,
+            model: Callable,
+            x_batch: pd.DataFrame,
+            y_batch: pd.DataFrame,
+            x_batch_stats: dict = None,
+    ):
+        pass
+
+    def explain_instance(
+            self,
+            input_vector,
+            counterfactual_target_class: Union[int, str] = "opposite",
+        ) -> CounterfactualExplanation:
+        pass 
+    
     def explainer_first_step(self, input_vector: np.ndarray):
         """_summary_
 
@@ -207,7 +243,7 @@ class CounterfactualExplainerBase():
 
         discretized_feature_names = None
         if self.discretize_continuous and self.discretizer is not None:
-            #categorical_features = self.x_batch.columns
+            #categorical_features = x_batch.columns
             discretized_instance = self.discretizer.discretize(np.array(input_vector))
             discretized_feature_names = copy.deepcopy(feature_names)
             for f in self.discretizer.names:
@@ -217,6 +253,24 @@ class CounterfactualExplainerBase():
         else:
             return input_vector
     
-    def explain_batch(self, num_explanations, counterfactual_target_class):
+    def explain_batch(
+            self,
+            data,
+            num_explanations,
+            counterfactual_target_class,
+        ) -> list[CounterfactualExplanation]:
+        """_summary_
+
+        Args:
+            num_explanations (_type_): _description_
+            counterfactual_target_class (_type_): _description_
+        """ 
+        pd_data = pd.DataFrame(data[0].numpy())
+        counterfactual_explanation_list = []       
+        for i in tqdm(range(num_explanations), desc="Generating counterfactual explanations"):
+            counterfactual_explanation_list.append(self.explain_instance(pd_data.iloc[i], counterfactual_target_class))
+        return counterfactual_explanation_list
+    
+    def alias(self):
         pass
     

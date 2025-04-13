@@ -1,10 +1,10 @@
-import logging
 import networkx as nx
 import numpy as np
 from src.explainers.helpers.helpers import get_opposite_class
 from src.explainers.counterfactual_based_explainers.counterfactual_explainer_base import CounterfactualExplainerBase
 from src.explainers.counterfactual_based_explainers.FACE import kernel
 from src.explainers.counterfactual_based_explainers.FACE.graph_components import create_path_to_counterfactual_class, create_recourse_graph
+from src.explainers.counterfactual_explanation import CounterfactualExplanation
 
 class FACE(CounterfactualExplainerBase):
     """_summary_
@@ -14,56 +14,71 @@ class FACE(CounterfactualExplainerBase):
     """    
     def __init__(
             self, 
-            model, 
-            x_batch,
-            y_batch,
             epsilon= 0.1, 
             density_threshold = 0.7,  
             number_of_paths: int= 5,
-            categorical_features: list[str] = None,
-            feature_names: dict= None,
             discretize_continuous: bool = False,
             discretizer: str = 'decile', 
             classification_threshold: float = 0.5, 
-            immutable_features: list[str]= None, 
             density_estimator: str = 'kde', 
             kde_bandwidth: float = 0.1, 
             knn_number_of_points: int = 5, 
             knnK: int = 5, 
-            knn_volume: float = 0.3
+            knn_volume: float = 0.3,
+            feature_names = None,
+            categorical_features: list[str] = None, 
+            immutable_features: list[str]= None, 
     ):
         super().__init__(
-            model= model,
-            x_batch= x_batch,
-            y_batch= y_batch,
             immutable_features= immutable_features,
             categorical_features = categorical_features,
             feature_names = feature_names,
             discretize_continuous=discretize_continuous,
             discretizer=discretizer
     )
-        self.model = model
         self.t_d = density_threshold
         self.t_p = classification_threshold
-        self.model = model
         self.n = number_of_paths
         self.eps = epsilon
+        self.density_estimator = density_estimator
+        self.kde_bandwidth = kde_bandwidth
+        self.knn_number_of_points = knn_number_of_points
+        self.knnK = knnK
+        self.knn_volume = knn_volume
         
         self.stored_indices = []
         self.visited = []
-        if density_estimator == "kde":
+
+    def init_explainer(
+            self,
+            model,
+            x_batch,
+            y_batch,
+            x_batch_stats = None,
+    ):
+        self._init_explainer(
+            model=model,
+            x_batch=x_batch,
+            y_batch=y_batch,
+            x_batch_stats=x_batch_stats,
+            )
+        
+        if self.density_estimator == "kde":
             self.kernel_function = kernel.KDE(
-                x_batch, 
-                kde_bandwidth, 
-                epsilon
+                self.x_batch, 
+                self.kde_bandwidth, 
+                self.eps
             )
-        if density_estimator == "knn":
+        elif self.density_estimator == "knn":
             self.kernel_function = kernel.KNN(
-                x_batch,
-                knn_volume,
-                knnK,
-                knn_number_of_points
+                self.x_batch,
+                self.knn_volume,
+                self.knnK,
+                self.knn_number_of_points
             )
+            
+    def alias(self):
+        return "FACE"
 
 
     def check_constraints(
@@ -85,7 +100,7 @@ class FACE(CounterfactualExplainerBase):
         """        
         density = self.kernel_function(a, b)
         dist = np.linalg.norm(a-b)
-        classified_prob = self.model.predict_proba(b)[counterfactual_target_class]
+        classified_prob = self.model.predict_proba(b)[0][counterfactual_target_class]
         if dist< self.eps:
             if density > self.t_p:
                 if classified_prob < self.t_d:
@@ -95,7 +110,7 @@ class FACE(CounterfactualExplainerBase):
             self, 
             input_vector, 
             counterfactual_target_class
-    ):
+    ) -> CounterfactualExplanation:
         """_summary_
 
         Args:
@@ -109,7 +124,6 @@ class FACE(CounterfactualExplainerBase):
         instance_class = self.model.predict(input_vector.to_frame().T)
         input_vector = self.explainer_first_step(input_vector)
         if counterfactual_target_class == 'opposite':
-            logging.info("Calling Explainer for Binary Class")
             counterfactual_target_class = get_opposite_class(instance_class)
         x_j, graph = create_path_to_counterfactual_class(
             self.model, np.array(self.x_batch), input_vector, counterfactual_target_class, graph, self.visited, self.t_d, self.kernel_function
@@ -119,4 +133,13 @@ class FACE(CounterfactualExplainerBase):
         )
 
         counterfactuals = self.x_batch.iloc[counterfactuals_indices]
-        return counterfactuals, graph
+        if len(counterfactuals) == 0:
+            raise ValueError("No counterfactuals found")
+        return CounterfactualExplanation(
+            input_vector=input_vector,
+            counterfactuals=counterfactuals,
+            feature_names=self.feature_names,
+            actual_class=instance_class,
+            counterfactual_target_class=counterfactual_target_class,
+            graph=graph
+        )

@@ -3,7 +3,11 @@ from scipy.stats import median_abs_deviation
 from scipy.spatial import distance
 
 def median_absolute_deviation(X, a, b):
-    return (abs(a - b))/median_abs_deviation(X)
+    mad = median_abs_deviation(X, axis=0)
+    non_zero_mad = mad != 0
+    result = np.zeros_like(a, dtype=float)
+    result[non_zero_mad] = np.abs(a[non_zero_mad] - b[non_zero_mad]) / mad[non_zero_mad]
+    return np.sum(result)
 
 def manhattan_distance(a, b):
     dist = distance.cityblock(a, b)
@@ -23,9 +27,6 @@ def proximity_score(x, y):
     """
     Compute the proximity score between the original instance x and the counterfactual instance y.
     """
-    print(type(x))
-
-    
     cat_diff = np.sum(y != x)
     
     return -cat_diff

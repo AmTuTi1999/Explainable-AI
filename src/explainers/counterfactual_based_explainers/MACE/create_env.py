@@ -28,10 +28,11 @@ class BuildModelEnv:
     def predict(self, x: np.ndarray):
         """
         predict
-        """  
-        x = self.discretizer.undiscretize(x)
+        """ 
+        if self.discretizer:
+            x = self.discretizer.undiscretize(x)
         x =x.reshape(1,-1)
-        return self.model.predict_proba(x)[0][self.counterfactual_class]
+        return self.model.predict_proba(x)[0][int(self.counterfactual_class)] #TODO predict_proba	
     
     def step(self, x_prime):
         """_summary_
@@ -44,7 +45,6 @@ class BuildModelEnv:
         """        
         reward = self.predict(x_prime)
         next_state = x_prime
-        done = reward > 0.60
-        print(done)
+        done = reward > 0.50
         return next_state, reward, done, {}
     

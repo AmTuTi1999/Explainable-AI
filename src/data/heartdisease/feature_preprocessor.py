@@ -3,6 +3,8 @@ from sklearn.preprocessing import StandardScaler
 import pickle
 
 class FeaturePreprocessor:
+    """_summary_
+    """    
     def __init__(self):
         self.numerical_scaler = None
         self.categorical_columns = None
@@ -23,7 +25,9 @@ class FeaturePreprocessor:
         self.numerical_columns = numerical_columns
 
         # Numerical transformation (scaling)
-        data[self.numerical_columns] = self._transform_numerical(data[self.numerical_columns])
+        scaled_numerical_data = self._transform_numerical(data[self.numerical_columns])
+        data = data.drop(columns=self.numerical_columns)  # Drop original numerical columns
+        data = pd.concat([data, scaled_numerical_data], axis=1)  # Add scaled numerical columns
 
         # Categorical transformation (one-hot encoding)
         data = self._transform_categorical(data, categorical_columns)

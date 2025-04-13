@@ -16,9 +16,10 @@ def init(cfg: DictConfig):
         _type_: _description_
     """    
     model: TabularNeuralNetworks = hydra.utils.instantiate(
-        cfg.model, columns= cfg.columns
+        cfg.model, columns= cfg.data.data.columns
     )
-    (data, target) = load_data(cfg.data)
+        
+    (data, target) = load_data(cfg.data.data)
 
     return model, (data, target)
 
@@ -37,7 +38,6 @@ def fit_and_evaluate(cfg: DictConfig):
     train_set = (x_train, y_train)
     val_set = (x_val, y_val)
     test_set = (x_test, y_test)
-
     model.fit(train_set, val_set)
     model.evaluate(test_set)
 

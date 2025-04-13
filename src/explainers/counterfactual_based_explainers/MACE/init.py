@@ -16,7 +16,6 @@ def count_differences(query_instance, neighbors, n_features):
     col_count = np.zeros(n_features)
     val_count = {i: {} for i in range(n_features)}
     for neighbor in neighbors:
-        print(neighbor)
         for c in range(n_features):
             if query_instance[0][c] != neighbor[c]:
                 col_count[c] += 1
@@ -73,8 +72,6 @@ def objective_function(x, z, C):
     Returns:
     - Objective value.
     """
-    print(x)
-    print(z)
     return np.sum([abs(z[i] - x[0][i]) for i in C])
 
 def gradient_less_descent(classifier, x, x_prime_list, R, r, T, counterfactual_target_class):
@@ -108,8 +105,6 @@ def gradient_less_descent(classifier, x, x_prime_list, R, r, T, counterfactual_t
                 for i in C:
                     a = np.random.normal(0, 1)  
                     z_k[i] = float(np.clip(z[i] + a * r_k, 0, 1))
-                    print('ffffff')
-                    print(classifier(np.array(z_k).reshape((1,-1))))
                 if classifier(np.array(z_k).reshape((1,-1)))> 0.5:
                     T_t.append(z_k)
             if T_t:

@@ -15,7 +15,7 @@ class FullyConnected(nn.Module):
             columns (_type_): _description_
         """        
         super(FullyConnected, self).__init__()
-        self.input_size = len(columns)
+        self.input_size = 150 #n(columns)
         self.layers = nn.ModuleList()
         self.layers.append(nn.Linear(self.input_size, model_param.hidden_layers[0]))
         
@@ -34,7 +34,7 @@ class FullyConnected(nn.Module):
 
         Returns:
             _type_: _description_
-        """        
+        """       
         for layer in self.layers:
             x = self.relu(layer(x))
         x = self.sigmoid(self.output_layer(x))

@@ -1,0 +1,16 @@
+_target_: src.models.tabularmodels.HeartDiseaseNeuralNetwork
+
+model_param:
+  input_size: 13      
+  hidden_layers: [32, 64, 32]  
+  output_size: 1         
+  activation: "relu"     
+  dropout: 0.2            
+  learning_rate: 0.001   
+  optimizer: "Adam"        
+  epochs: 50              
+  batch_size: 32          
+  loss: "BCE"  
+  threshold: 0.5
+  binary_classifier: True
+  state_dict_path: "/workspaces/Explainable-AI/heart_disease_model.pkl"

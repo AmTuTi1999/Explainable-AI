@@ -1,0 +1,18 @@
+# @package _global_
+
+defaults:
+  - override /data: heart_disease
+  - override /model: tabular_models/heart_disease.yaml
+  - override /explainers:
+      - mace.yaml
+      - face.yaml
+      - clear.yaml
+      - certifai.yaml
+      - dice.yaml
+
+model_path: /workspaces/Explainable-AI/heart_disease_model.pkl
+categorical_features: null
+feature_names: null
+immutable_features: null
+num_samples: 2
+counterfactual_target_class: opposite

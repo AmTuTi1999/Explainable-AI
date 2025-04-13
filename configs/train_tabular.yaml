@@ -1,2 +1,10 @@
 defaults:
- - model: 
+  - _self_
+  - hydra: hydra
+  - data: heart_disease
+  - model: tabular_models/heart_disease
+  - experiment: heart-disease-tabular
+
+val_size: 0.2
+test_size: 0.2
+random_seed: 42

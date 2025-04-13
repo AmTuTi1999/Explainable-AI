@@ -44,7 +44,7 @@ class GeneticAlgorithm:
         """
         for i in range(len(individual)):
             if random.random() < self.mutation_rate:
-                low, high = self.search_space[i].min(), self.search_space[i].max()  # Bounds for the feature
+                low, high = self.search_space[:, i].min(), self.search_space[:, i].max()  # Bounds for the feature
                 individual[i] = np.clip(individual[i] + np.random.uniform(-0.1, 0.1), low, high)
         return individual
 

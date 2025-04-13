@@ -20,14 +20,12 @@ def find_neighbours(unit, data, already_visited: list):
     return data[wanted_indices][wanted_index]
 
 def generate_paths(node_set, data, number_of_paths, visited_nodes: list):
-    net = np.ones((len(node_set), number_of_paths + 1, data.shape[1]))
-    print(net.shape)
-    print(node_set)
+    net = []
     for i, n_i in enumerate(node_set):
         neighbours = find_neighbours(n_i, data, visited_nodes)[1: number_of_paths]
         for blet in neighbours:
             generated_nodes = np.vstack([n_i, find_neighbours(blet, data, visited_nodes)])
-        net[i] = generated_nodes
-    return net
+        net.append(generated_nodes)
+    return np.array(net)
     
 

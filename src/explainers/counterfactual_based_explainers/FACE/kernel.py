@@ -48,8 +48,8 @@ class KDE(Kernel):
         mean = 0.5*(xi + xj)
         dist = np.linalg.norm(xi - xj, 2)
         kde = KernelDensity(kernel='gaussian', bandwidth= self.bandwidth).fit(self.data)
-        density_at_mean = np.exp(kde.score_samples([mean]))
-        return (1/(density_at_mean + self.eps))*dist   
+        density_at_mean = np.exp(kde.score_samples(mean.reshape(1, -1)))
+        return (1/(density_at_mean + self.epsilon))*dist   
 
     def __call__(self, xi, xj):
         return self.func(xi, xj)    

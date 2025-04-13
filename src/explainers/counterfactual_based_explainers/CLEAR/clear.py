@@ -1,80 +1,100 @@
 import numpy as np
 import pandas as pd
 import logging
-from typing import Callable
-from explainers.helpers.helpers import extend_dataframe, get_opposite_class
+from typing import Callable, Union
+from src.explainers.counterfactual_based_explainers.counterfactual_explainer_base import CounterfactualExplainerBase
+from src.explainers.helpers.helpers import get_opposite_class
 
-from explainers.counterfactual_based_explainers.preprocess.data_augmentation import data_augment
-from src.explainers.counterfactual_based_explainers.CLEAR.surrogate_regressors.linear_regressor import LinearRegressor
+from src.explainers.counterfactual_based_explainers.CLEAR.linear_regressor import LinearRegressor
 from src.explainers.counterfactual_based_explainers.CLEAR.clear_utils import EstimatedBCounterfactual
+from src.explainers.counterfactual_explanation import CounterfactualExplanation
 
-class CLEAR:
+class CLEAR(CounterfactualExplainerBase):
+    """CLEAR: Counterfactual Local Explanations with Adversarial Regressor"""
     def __init__(
         self,
-        model, 
-        x_batch,
-        y_batch,
         num_points_neighbourhood,
-        immutable_features: list[str] = [],  
-        regressor_model: Callable = None,    
+        discretize_continuous: bool = False,
+        discretizer: str = "decile",
+        random_state: int = 42,
+        data_augmentation: bool = True,  
+        regressor_model: Callable = None,  
+        feature_names = None,
+        categorical_features: list[str] = None, 
+        categorical_names = None,
+        immutable_features: list[str]= None,   
         ):
+            super().__init__(
+                categorical_features=categorical_features,
+                categorical_names=categorical_names,
+                immutable_features=immutable_features,
+                feature_names=feature_names,
+                discretize_continuous=discretize_continuous,
+                discretizer=discretizer,
+                random_state=random_state,
+                data_augmentation=data_augmentation,
+            )
             self.num_points_neighbourhood = num_points_neighbourhood
-            self.model = model
             self.regressor_model = regressor_model
-            self.x_batch = x_batch
-            self.columns = x_batch.columns
-            synthetic_data, synthetic_labels = data_augment(
-                x_batch, y_batch, model, immutable_columns=immutable_features
-                )
-            self.augmented_data, self.augmented_labels = extend_dataframe(x_batch, synthetic_data), extend_dataframe(y_batch, synthetic_labels)
 
-    def __call__(
-            self, 
-            num_explanations,
-            counterfactual_target_class,
-        ):
-        self.explain_batch(num_explanations, counterfactual_target_class)
+    def init_explainer(
+            self,
+            model,
+            x_batch,
+            y_batch,
+            x_batch_stats = None,
+    ):
+        self._init_explainer(
+            model=model,
+            x_batch=x_batch,
+            y_batch=y_batch,
+            x_batch_stats=x_batch_stats,
+            )   
 
+    def alias(self):
+        return 'CLEAR'
+    
     def explain_instance(
             self,
             input_vector,
-            counterfactual_target_class: int | str = "opposite",
-        ):
-
-        search_space = self.augmented_data[self.augmented_labels['label'] == counterfactual_target_class]        
+            counterfactual_target_class: Union[int, str] = "opposite",
+        ) -> CounterfactualExplanation:
+              
         instance_class = self.model.predict(input_vector)
-
         if counterfactual_target_class == 'opposite':
             logging.info("Calling Explainer for Binary Class")
             counterfactual_target_class = get_opposite_class(instance_class)
-
+        search_space = self.x_batch[self.y_batch['labels'] == counterfactual_target_class[0]]
         estimated_b_counterfactuals, b_counterfactuals = EstimatedBCounterfactual(
             regressor_model=self.regressor_model, 
             number_of_points_per_neighbourhood=self.num_points_neighbourhood
             )(
-            input_vector, self.model, counterfactual_target_class, search_space
+            self.x_batch, input_vector, self.model, counterfactual_target_class, search_space
             )
         
         best_fidelity_error = np.inf
+        
         for i in range(len(b_counterfactuals)):
-            fidelity_error = fidelity_error(estimated_b_counterfactuals.iloc[i], b_counterfactuals.iloc[i], input_vector)
-            if fidelity_error < best_fidelity_error:
-                best_b_counterfactual = b_counterfactuals.iloc[i]
-                best_estimated_b_counterfactual = estimated_b_counterfactuals.iloc[i]
-                best_fidelity_error = fidelity_error
-        return best_b_counterfactual, best_estimated_b_counterfactual
- 
-    def explain_batch(
-            self,
-            num_explanations,
-            counterfactual_target_class,
-        ):
-        for i in range(num_explanations):
-            self.explain_instance(self.x_batch.iloc[i], counterfactual_target_class)
+            fidelity_error_value = self.fidelity_error(estimated_b_counterfactuals[i], b_counterfactuals[i], input_vector)
+            if fidelity_error_value < best_fidelity_error:
+                best_b_counterfactual = b_counterfactuals[i]
+                best_estimated_b_counterfactual = estimated_b_counterfactuals[i]
+                best_fidelity_error = fidelity_error_value
+        return CounterfactualExplanation(
+            input_vector=input_vector,
+            counterfactuals=best_estimated_b_counterfactual,
+            feature_names=self.feature_names,
+            actual_class=instance_class,
+            counterfactual_target_class=counterfactual_target_class,
+        )
     
         
     def transform_to_df(self, X):
-        return pd.DataFrame(X, columns=self.columns)
+        return pd.DataFrame(X, columns=self.feature_names)
+
+
+    def fidelity_error(self, a, b, c):
+        return np.linalg.norm(abs(a - c) - abs(b - c), ord=1)
 
 
     

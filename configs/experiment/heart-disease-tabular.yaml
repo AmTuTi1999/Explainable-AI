@@ -1,0 +1,5 @@
+# @package _global_
+
+defaults:
+  - override /data: heart_disease
+  - override /model: tabular_models/heart_disease.yaml

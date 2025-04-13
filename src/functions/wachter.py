@@ -11,9 +11,8 @@ def wachter_search(
     norm_func: Callable,
     ):   
     
-    prediction_probabilities = model.predict_proba(search_space)
+    prediction_probabilities = model.predict_proba(search_space.to_numpy())
     best_possible_classification = 1.0
-
     distances = np.array(
         [norm_func(x_batch, search_space.iloc[i], input_vector) for i in range(len(search_space))]
     )

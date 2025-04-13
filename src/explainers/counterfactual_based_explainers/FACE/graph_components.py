@@ -82,7 +82,6 @@ def create_recourse_graph(
         others, x_batch[np.flatnonzero(y_batch == counterfactual_target_class)], number_of_paths, visited
     )
     path = np.zeros((1, x_batch.shape[1]))
-
     for i in range(path_tensor.shape[0]):
         graph.add_node(utils.get_index(x_batch, path_tensor[i][0]))
         graph.add_edge(utils.get_index(x_batch, input_vector), 
@@ -91,8 +90,7 @@ def create_recourse_graph(
         )
         path_a = np.vstack([input_vector, path_tensor[i][0]])
         for k in range(1, path_tensor.shape[1]):
-            
-            if check_constraints(path_tensor[i][0], path_tensor[i][k], counterfactual_target_class):
+            if check_constraints(path_tensor[i][0].reshape(1,-1), path_tensor[i][k].reshape((1 ,-1)), counterfactual_target_class):
                 graph.add_node(utils.get_index(x_batch, path_tensor[i][k]))
                 graph.add_edge(utils.get_index(x_batch, path_tensor[i][0]), 
                                utils.get_index(x_batch, path_tensor[i][k]),
@@ -126,5 +124,4 @@ def create_recourse_graph(
                     epoch += 1
 
     counterfactuals_indices = [node for node in graph.nodes if graph.out_degree(node) == 0]
-
     return counterfactuals_indices, graph

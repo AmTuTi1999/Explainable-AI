@@ -3,6 +3,7 @@ import numpy as np
 from src.explainers.helpers.helpers import get_opposite_class
 from src.explainers.counterfactual_based_explainers.counterfactual_explainer_base import CounterfactualExplainerBase
 from src.explainers.counterfactual_based_explainers.CERTIFAI.certifai_utils import GeneticAlgorithm
+from src.explainers.counterfactual_explanation import CounterfactualExplanation
 
 class CERTIFAI(CounterfactualExplainerBase):
     """_summary_
@@ -12,19 +13,16 @@ class CERTIFAI(CounterfactualExplainerBase):
     """    
     def __init__(
             self, 
-            model, 
-            x_batch,
-            y_batch,
             distance_function, 
-            categorical_features,
-            feature_names,
-            immutable_features,
             discretize_continuous = False,
             discretizer = 'decile',
             mutation_rate=0.1, 
             crossover_rate=0.5, 
             generations=100, 
-            population_size=50
+            population_size=50,
+            feature_names = None,
+            categorical_features: list[str] = None, 
+            immutable_features: list[str]= None, 
     ):
         """
         Initialize the genetic algorithm.
@@ -39,22 +37,43 @@ class CERTIFAI(CounterfactualExplainerBase):
         :param population_size: Number of individuals in the population
         """
         super().__init__(
-            model=model,
-            x_batch=x_batch,
-            y_batch=y_batch, 
             immutable_features=immutable_features,
             categorical_features = categorical_features,
             feature_names = feature_names,
             discretize_continuous=discretize_continuous,
             discretizer=discretizer
         )
-        self.model = model
-        self.distance_function = distance_function# predefined space for each feature
+        if isinstance(distance_function, str):
+            if distance_function == 'l1':
+                self.distance_function = lambda x, y: np.sum(np.abs(x - y))
+            elif distance_function == 'l2':
+                self.distance_function = lambda x, y: np.sqrt(np.sum((x - y) ** 2))
+            elif distance_function == 'linf':
+                self.distance_function = lambda x, y: np.max(np.abs(x - y))
+            else:
+                raise ValueError(f"Unsupported distance function: {distance_function}")
+        else:
+            self.distance_function = distance_function  # Assume it's a callable
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.generations = generations
         self.population_size = population_size
 
+
+    def init_explainer(
+            self,
+            model,
+            x_batch,                
+            y_batch,
+            x_batch_stats = None,
+    ):
+        self._init_explainer(
+            model=model,
+            x_batch=x_batch,
+            y_batch=y_batch,
+            x_batch_stats=x_batch_stats,
+        )
+        
 
     def _fitness(self, input_vector, candidate):
         """
@@ -66,11 +85,14 @@ class CERTIFAI(CounterfactualExplainerBase):
         distance = self.distance_function(input_vector, candidate)
         return 1 / (distance + 1e-6)  # Adding small value to prevent division by zero
 
+    def alias(self):
+        return "CERTIFAI"
+    
     def explain_instance(
             self, 
             input_vector, 
             counterfactual_target_class
-    ): 
+    ) -> CounterfactualExplanation: 
         """_summary_
 
         Args:
@@ -81,14 +103,13 @@ class CERTIFAI(CounterfactualExplainerBase):
             _type_: _description_
         """        
         instance_class = self.model.predict(input_vector.to_frame().T)
-        input_vector = self.explainer_first_step(input_vector)
+        input_vector_rev = self.explainer_first_step(input_vector)
         if counterfactual_target_class == 'opposite':
-            logging.info("Calling Explainer for Binary Class")
             counterfactual_target_class = get_opposite_class(instance_class)
         search_space = self.x_batch.to_numpy()[np.flatnonzero(self.y_batch.to_numpy() == counterfactual_target_class)]
         generator = GeneticAlgorithm(
             classifier=self.model.predict, 
-            input_vector=input_vector,
+            input_vector=input_vector_rev,
             population_size=self.population_size,
             generations=self.generations,
             fitness_function=self._fitness,
@@ -97,5 +118,10 @@ class CERTIFAI(CounterfactualExplainerBase):
             search_space=search_space,
         )
         counterfactual = generator.evolve()
-        return counterfactual
-
+        return CounterfactualExplanation(
+            input_vector=input_vector,
+            counterfactuals=counterfactual,
+            feature_names=self.feature_names,
+            actual_class=instance_class,
+            counterfactual_target_class=counterfactual_target_class
+        )

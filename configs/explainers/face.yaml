@@ -1,0 +1,13 @@
+face:
+  _target_: src.explainers.counterfactual_based_explainers.FACE.face.FACE
+  epsilon: 0.1
+  density_threshold: 0.7
+  number_of_paths: 5
+  discretize_continuous: false
+  discretizer: 'decile'
+  classification_threshold: 0.5
+  density_estimator: 'kde'
+  kde_bandwidth: 0.1
+  knn_number_of_points: 5
+  knnK: 5
+  knn_volume: 0.3

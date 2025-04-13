@@ -4,7 +4,7 @@ from typing import Callable
 from pandas import DataFrame
 from src.functions.wachter import wachter_search
 from sklearn.linear_model import LogisticRegression #type: ignore
-from .surrogate_regressors.linear_regressor import LinearRegressor
+from .linear_regressor import LinearRegressor
 from src.functions.norms import median_absolute_deviation, square_difference
 
 
@@ -12,8 +12,8 @@ from src.functions.norms import median_absolute_deviation, square_difference
 class EstimatedBCounterfactual():
     def __init__(
             self,
-            prediction_lower_bound: float = 0.3, 
-            prediction_upper_bound: float = 0.7,
+            prediction_lower_bound: float = 0.1, 
+            prediction_upper_bound: float = 0.4,
             norm_func: Callable = median_absolute_deviation,
             loss_func: Callable = square_difference,
             balanced_neighbourhood: bool = True,
@@ -49,12 +49,13 @@ class EstimatedBCounterfactual():
             self,
             x_batch,
             counterfactual_class_probabilities,
-            upper_bound: float,
             lower_bound: float,
+            upper_bound: float,
         ) -> DataFrame:
-
-        upper_boundary_set = np.array(x_batch)[counterfactual_class_probabilities > lower_bound]
-        boundary_set_array = upper_boundary_set[counterfactual_class_probabilities < upper_bound]
+        boundary_set_array = np.array(x_batch)[
+            (counterfactual_class_probabilities > lower_bound) & 
+            (counterfactual_class_probabilities < upper_bound)
+        ]
         boundary_set_df = DataFrame(boundary_set_array, columns=x_batch.columns)
         return boundary_set_df
 
@@ -69,8 +70,8 @@ class EstimatedBCounterfactual():
 
         neighbourhood = np.array([])
 
-        prediction_probabilities = model.predict_proba(x_batch)
-        counterfactual_class_probabilities = prediction_probabilities[:, target_class]
+        prediction_probabilities = model.predict_proba(x_batch.to_numpy())
+        counterfactual_class_probabilities = np.array([prediction_probabilities[i][int(target_class)] for i in range(len(prediction_probabilities))])
 
         lower_cut = self.get_set_from_prediction_boundaries(x_batch, counterfactual_class_probabilities, 0, self.p_l_b)
         mid_cut = self.get_set_from_prediction_boundaries(x_batch, counterfactual_class_probabilities, self.p_l_b, self.p_u_b)
@@ -79,27 +80,33 @@ class EstimatedBCounterfactual():
         if self.balanced_neighbourhood:
             self.number_of_points_per_neighbourhood = min([len(lower_cut), len(mid_cut), len(upper_cut)])*3
             for cut in [lower_cut.to_numpy(), mid_cut.to_numpy(), upper_cut.to_numpy()]:
-                distance_norms = [[self.norm_func(x_batch, input_vector, cut[i]), i] for  i in range(len(cut))]
-                distance_norms = np.array(distance_norms).reshape((len(cut), 2))
-                sorted_distance_norms = distance_norms[distance_norms[:,0].argsort()]
-                neighbourhood_index_list = sorted_distance_norms[:,1].astype(int)[self.number_of_points_per_neighbourhood//3]
-                selected_points = cut[neighbourhood_index_list]
-                neighbourhood.append(selected_points)
+                if cut.size != 0:
+                    distance_norms = [[self.norm_func(x_batch, input_vector, cut[i]), i] for  i in range(len(cut))]
+                    distance_norms = np.array(distance_norms).reshape((len(cut), 2))
+                    sorted_distance_norms = distance_norms[distance_norms[:,0].argsort()]
+                    neighbourhood_index_list = sorted_distance_norms[:,1].astype(int)[:self.number_of_points_per_neighbourhood//3]
+                    selected_points = cut[neighbourhood_index_list]
+                    if neighbourhood.size == 0:
+                        neighbourhood = selected_points
+                    else:
+                        neighbourhood = np.vstack((neighbourhood, selected_points))
         else:
             for cut in [lower_cut.to_numpy(), mid_cut.to_numpy(), upper_cut.to_numpy()]:
-                distance_norms = [[self.norm_func(x_batch, input_vector, cut[i]), i] for  i in range(len(cut))]
-                distance_norms = np.array(distance_norms).reshape((len(cut), 2))
-                sorted_distance_norms = distance_norms[distance_norms[:,0].argsort()]
-                selected_points = cut[neighbourhood_index_list]
-                if self.number_of_points_per_neighbourhood//3 < len(cut):
-                    index_list = sorted_distance_norms[:,1].astype(int)[:self.number_of_points_per_neighbourhood//3]
-                    selected_points = cut[index_list]
-                else:
-                    selected_points = cut
-                neighbourhood.append(selected_points)
-                
-        neighbourhood_set = np.concatenate(neighbourhood)
-        neighbourhood_df = DataFrame(neighbourhood_set, columns=x_batch.columns)
+                if cut.size != 0:
+                    distance_norms = [[self.norm_func(x_batch, input_vector, cut[i]), i] for  i in range(len(cut))]
+                    distance_norms = np.array(distance_norms).reshape((len(cut), 2))
+                    sorted_distance_norms = distance_norms[distance_norms[:,0].argsort()]
+                    selected_points = cut[neighbourhood_index_list]
+                    if self.number_of_points_per_neighbourhood//3 < len(cut):
+                        index_list = sorted_distance_norms[:,1].astype(int)[:self.number_of_points_per_neighbourhood//3]
+                        selected_points = cut[index_list]
+                    else:
+                        selected_points = cut
+                    if neighbourhood.size == 0:
+                        neighbourhood = selected_points
+                    else:
+                        neighbourhood = np.vstack(neighbourhood, selected_points)
+        neighbourhood_df = DataFrame(neighbourhood, columns=x_batch.columns)
         neighbourhood_labels = DataFrame(model.predict(neighbourhood_df), columns=['target'])
         return neighbourhood_df, neighbourhood_labels
     
@@ -110,12 +117,17 @@ class EstimatedBCounterfactual():
             model,
             target_class,
     ):
-        data, labels = self.get_input_neighbourhood(
-            x_batch,
-            model,
-            input_vector, 
-            target_class,
-        )
+        for attempt in range(10):
+            data, labels = self.get_input_neighbourhood(
+                x_batch,
+                model,
+                input_vector, 
+                target_class,
+            )
+            if len(labels['target'].unique()) > 1:
+                break
+        else:
+            raise ValueError("Neighbourhood labels contain only one class. Please reinitialize explainer.")
         regressor_weights = self.regressor_model.weights(data, labels)
         return regressor_weights	
 

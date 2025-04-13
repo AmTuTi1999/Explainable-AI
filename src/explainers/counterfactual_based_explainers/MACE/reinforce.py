@@ -116,11 +116,10 @@ def reinforce_algorithm(
     m = len(list(V_C.values())[0]) # Number of possible values per feature
     p = np.random.rand(s)
     q = [np.random.rand(m) for _ in range(s)]  
-    print(V_C)
     list_of_actions = generate_all_combinations(V_C)
     for _ in range(num_episodes):
         state = env.reset()
-        done = False
+        done = True
         trajectory = []
         rewards = []
         
