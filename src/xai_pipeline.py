@@ -3,6 +3,7 @@ import torch
 import hydra
 from pandas import DataFrame
 import logging
+from numpy.typing import NDArray
 
 from src.models.tabularmodels import TabularNeuralNetworks
 from src.explainers.counterfactual_based_explainers.counterfactual_explainer_base import CounterfactualExplainerBase
@@ -10,6 +11,8 @@ from src.explainers.explainer_wrapper import CounterfactualExplainerWrapper
 from src.explainers.counterfactual_explanation import CounterfactualExplanation
 from src.pipelines import init
 from src.explainers.counterfactual_based_explainers.CLEAR.clear import CLEAR
+from src.explainer_metrics.explainer_metric import ExplainerMetric
+from src.utils import make_attributions_into_array, make_attrributes_individual, make_x_batch_and_y_batch
 
 def load_model_and_data(cfg: DictConfig, model: torch.nn.Module, data: tuple[DataFrame, DataFrame]) -> tuple[torch.nn.Module, tuple[DataFrame, DataFrame]]:
     """
@@ -48,6 +51,7 @@ def initialize_counterfactual_explainers(
     """
 
     explainer_wrappers = {}
+    explainer_funcs = {}
     x_batch, y_batch = data
     logging.info("Instantiating Explainer Wrappers...")
     for explainer_name in cfg.explainers:
@@ -69,14 +73,16 @@ def initialize_counterfactual_explainers(
             counterfactual_target_class=cfg.counterfactual_target_class,
         )
         explainer_wrappers[explainer.alias()] = explainer_wrapper
+        explainer_funcs[explainer.alias()] = explainer_wrapper.explainer_func
 
-    return explainer_wrappers
+    return explainer_wrappers, explainer_funcs
     
 
 def generate_counterfactuals(
         cfg: DictConfig,
         model: torch.nn.Module,
         data: tuple[DataFrame, DataFrame],
+        explainer_wrappers: dict,
 ) -> dict[str, CounterfactualExplanation]:
     """
     Generate counterfactuals for the given model and data loader using the specified explainer.
@@ -93,14 +99,57 @@ def generate_counterfactuals(
         List of explanations.
     """
     counterfactual_explanations_dict = {}
-    explainer_wrappers = initialize_counterfactual_explainers(cfg, model, data)
     for explainer_alias, explainer_wrapper in explainer_wrappers.items():
         logging.info(f"Generating counterfactuals using {explainer_alias} for {cfg.num_samples} samples...")
-        counterfactual_explanations = explainer_wrapper.explain_local(data)
+        counterfactual_explanations = explainer_wrapper.explain_local(data[0])
 
         counterfactual_explanations_dict[explainer_alias] = counterfactual_explanations
     logging.info("Counterfactuals generated successfully.")
     return counterfactual_explanations_dict
+
+def evaluate_explanations(
+        cfg: DictConfig,
+        model: torch.nn.Module,
+        data,
+        counterfactual_explanations: dict[str, NDArray],
+        explainer_funcs: dict[str, callable],
+) -> dict[str, dict[str, float]]:
+    """
+    Evaluate the generated counterfactuals.ydra.utils.instantiate(
+            cfg.explainer_metrics[explainer_metric],
+        )
+        metric_values = {}
+        for explainer_name, explainer_values in counterfactual_explanations.items():
+            explainer_metric.ini
+
+    Args:
+        cfg: Configuration object containing model and data parameters.
+        model: The model to evaluate.
+        data: DataLoader providing the input data.
+        counterfactual_explanations: Dictionary of counterfactual explanations.
+
+    Returns:
+        Dictionary of evaluation metrics.
+    """
+    logging.info("Instantiating Explainer Wrappers...")
+    all_metrics = {}
+    for explainer_metric in cfg.explainer_metrics:
+        explainer_metric: ExplainerMetric = hydra.utils.instantiate(
+            cfg.explainer_metrics[explainer_metric],
+        )
+        metric_values = {}
+        for explainer_name, explainer_values in counterfactual_explanations.items():
+            explainer_metric.init_explainer_metric(
+                model=model,
+                data_batch=data,
+                explanations=explainer_values,    
+                explainer_func=explainer_funcs[explainer_name],
+            )
+
+            metric_values[explainer_name] = explainer_metric._calculated_metrics
+        all_metrics[explainer_metric] = metric_values
+    logging.info("Evaluation metrics calculated successfully.")
+    return all_metrics
 
 def run_explain_pipeline(
         cfg: DictConfig,
@@ -114,8 +163,11 @@ def run_explain_pipeline(
         cfg: Configuration object containing model and data parameters.
     """
     model, data = load_model_and_data(cfg, model=model, data=data)
-    counterfactual_explanations = generate_counterfactuals(cfg, model, data)
-
+    explainer_wrappers, explainer_funcs = initialize_counterfactual_explainers(cfg, model=model, data=data)
+    counterfactual_explanations = generate_counterfactuals(cfg, model, data, explainer_wrappers)
+    attributions_array = make_attributions_into_array(counterfactual_explanations)
+    explanation_metrics = evaluate_explanations(cfg, model.estimator, data, counterfactual_explanations=attributions_array, explainer_funcs=explainer_funcs)
+    print(explanation_metrics)
     return counterfactual_explanations
 
 def explain_pipeline(cfg: DictConfig):

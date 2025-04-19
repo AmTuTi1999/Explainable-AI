@@ -116,7 +116,7 @@ class MACE(CounterfactualExplainerBase):
 
         return CounterfactualExplanation(
             input_vector=input_vector,
-            counterfactuals=refined_counterfactuals,
+            counterfactuals=np.array(refined_counterfactuals),
             feature_names=self.feature_names,
             actual_class=instance_class,
             counterfactual_target_class=counterfactual_target_class,

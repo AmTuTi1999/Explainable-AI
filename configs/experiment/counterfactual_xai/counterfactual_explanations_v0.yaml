@@ -6,9 +6,12 @@ defaults:
   - override /explainers:
       - mace.yaml
       - face.yaml
-      - clear.yaml
+      #- clear.yaml
       - certifai.yaml
       - dice.yaml
+  - override /explainer_metrics:
+      - max_sensitivity.yaml
+      # - counterfactual_fairness.yaml
 
 model_path: /workspaces/Explainable-AI/heart_disease_model.pkl
 categorical_features: null

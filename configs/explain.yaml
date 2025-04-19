@@ -9,6 +9,9 @@ defaults:
       - face.yaml
       - clear.yaml
       - certifai.yaml
+  - explainer_metrics:
+      - max_sensitivity.yaml
+      # - counterfactual_fairness.yaml
   - experiment: counterfactual_xai/counterfactual_explanations_v0
 
 seed : 42

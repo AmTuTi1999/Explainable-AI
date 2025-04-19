@@ -137,7 +137,7 @@ class FACE(CounterfactualExplainerBase):
             raise ValueError("No counterfactuals found")
         return CounterfactualExplanation(
             input_vector=input_vector,
-            counterfactuals=counterfactuals,
+            counterfactuals=np.array(counterfactuals),
             feature_names=self.feature_names,
             actual_class=instance_class,
             counterfactual_target_class=counterfactual_target_class,

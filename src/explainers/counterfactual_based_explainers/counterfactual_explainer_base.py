@@ -265,10 +265,16 @@ class CounterfactualExplainerBase():
             num_explanations (_type_): _description_
             counterfactual_target_class (_type_): _description_
         """ 
-        pd_data = pd.DataFrame(data[0].numpy())
-        counterfactual_explanation_list = []       
-        for i in tqdm(range(num_explanations), desc="Generating counterfactual explanations"):
-            counterfactual_explanation_list.append(self.explain_instance(pd_data.iloc[i], counterfactual_target_class))
+        if data.ndim == 3:
+            pd_data = pd.DataFrame(data.squeeze(1).numpy())
+        else:
+            pd_data = pd.DataFrame(data.numpy())
+        counterfactual_explanation_list = []    
+        if len(pd_data) == 1:
+            counterfactual_explanation_list.append(self.explain_instance(pd_data.iloc[0], counterfactual_target_class))
+        elif len(pd_data) > 1:
+            for i in tqdm(range(num_explanations), desc="Generating counterfactual explanations"):
+                counterfactual_explanation_list.append(self.explain_instance(pd_data.iloc[i], counterfactual_target_class))
         return counterfactual_explanation_list
     
     def alias(self):

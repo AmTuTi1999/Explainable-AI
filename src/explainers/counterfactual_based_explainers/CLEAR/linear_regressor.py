@@ -30,7 +30,6 @@ class LinearRegressor():
             y_pred = self.linear_model.predict(x_test)
             acc = accuracy_score(y_test, y_pred)
             recall = recall_score(y_test, y_pred)
-            logging.info(f"Accuracy: {acc}, Recall: {recall}")
             if acc >= 0.8 and recall >= 0.8:
                 w = self.linear_model.coef_
                 break

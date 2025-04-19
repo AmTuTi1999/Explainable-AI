@@ -2,6 +2,10 @@ from src.explainers.counterfactual_based_explainers.counterfactual_explainer_bas
 from src.explainers.counterfactual_explanation import CounterfactualExplanation
 from typing import Union
 
+import torch
+import numpy as np
+from numpy.typing import NDArray
+
 class CounterfactualExplainerWrapper:
     """
     Wrapper class for different explainers.
@@ -36,3 +40,25 @@ class CounterfactualExplainerWrapper:
         """
         explanation_list = self._explainer.explain_batch(data, self.num_samples, self.counterfactual_target_class)
         return explanation_list 
+    
+    def explainer_func(
+            self,
+            model,
+            inputs,
+            targets=None,
+            device="cpu",
+            **kwargs,
+    ) -> NDArray:
+        if type(inputs) is np.ndarray:
+            input_tensor = torch.from_numpy(inputs) 
+        elif type(inputs) is torch.Tensor:
+            input_tensor = inputs
+        else:
+            raise ValueError("inputs must be either numpy array or torch tensor")
+        explanations = self.explain_local(input_tensor)
+        return np.concatenate(
+            [
+            exp.counterfactuals[0] for exp in explanations
+            ],
+            axis=0,
+        )[:, None]

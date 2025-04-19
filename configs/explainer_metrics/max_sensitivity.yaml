@@ -1,0 +1,3 @@
+max_sensitivity: 
+  _target_: src.explainer_metrics.sensitivity.max_sensitivity.MaxSensitivityMetric
+  nr_samples: 2
