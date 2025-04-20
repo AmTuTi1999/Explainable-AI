@@ -83,6 +83,8 @@ class DICE(CounterfactualExplainerBase):
         counterfactuals = counterfactuals.drop(columns=['labels'])
         counterfactuals = counterfactuals.to_numpy()
         counterfactual_predictions = self.model.predict(counterfactuals)
+        counterfactual_probabilities = np.max(self.model.predict_proba(counterfactuals), axis=1)
+        print(f"Counterfactual probabilities: {counterfactual_probabilities}")
 
         return CounterfactualExplanation(
             input_vector=input_vector,
@@ -92,6 +94,7 @@ class DICE(CounterfactualExplainerBase):
             counterfactual_target_class=counterfactual_target_class,
             graph=None,
             counterfactual_predictions=counterfactual_predictions,
+            counterfactual_probabilities=counterfactual_probabilities,
         )
     
         

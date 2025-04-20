@@ -135,7 +135,9 @@ class FACE(CounterfactualExplainerBase):
         counterfactuals = self.x_batch.iloc[counterfactuals_indices]
         if len(counterfactuals) == 0:
             raise ValueError("No counterfactuals found")
-        counterfactual_predictions = self.model.predict(counterfactuals.to_numpy())   
+        counterfactual_predictions = self.model.predict(counterfactuals.to_numpy())  
+        counterfactual_probabilities = np.max(self.model.predict_proba(counterfactuals.to_numpy()), axis=1)
+        print(f"Counterfactual probabilities: {counterfactual_probabilities}")
         return CounterfactualExplanation(
             input_vector=input_vector,
             counterfactuals=np.array(counterfactuals),

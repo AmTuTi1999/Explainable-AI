@@ -112,6 +112,9 @@ class MACE(CounterfactualExplainerBase):
             model_env.predict, input_vector.to_numpy(), selected_counterfactual_examples, self.max_search_radius, self.min_search_radius, self.refine_epochs, counterfactual_target_class
         )[:self.b]
         counterfactual_predictions = self.model.predict(np.array(refined_counterfactuals))
+        print(len(np.array(refined_counterfactuals)))
+        counterfactual_probabilities = np.max(self.model.predict_proba(np.array(refined_counterfactuals)), axis=1)
+        print(f"Counterfactual probabilities: {counterfactual_probabilities}")
         # TODO add representation function, returns dataframe, html, or something else: do research
 
         return CounterfactualExplanation(
@@ -122,6 +125,7 @@ class MACE(CounterfactualExplainerBase):
             counterfactual_target_class=counterfactual_target_class,
             graph=None,
             counterfactual_predictions=counterfactual_predictions,
+            counterfactual_probabilities=counterfactual_probabilities,
         )
     
         

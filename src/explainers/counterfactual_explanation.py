@@ -15,6 +15,7 @@ class CounterfactualExplanation:
             counterfactual_target_class: Union[int, str],
             graph: nx.DiGraph = None,
             counterfactual_predictions = None,
+            counterfactual_probabilities = None,
         ) -> None:
         """
         Initialize the CounterfactualExplanation class.
@@ -30,6 +31,7 @@ class CounterfactualExplanation:
         self.counterfactual_target_class = counterfactual_target_class
         self._graph = graph
         self.counterfactual_predictions = counterfactual_predictions
+        self.counterfactual_probabilities = counterfactual_probabilities
 
 
 

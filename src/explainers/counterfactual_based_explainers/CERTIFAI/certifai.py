@@ -119,6 +119,7 @@ class CERTIFAI(CounterfactualExplainerBase):
         )
         counterfactual = generator.evolve()
         counterfactual_predictions = self.model.predict(counterfactual)
+        counterfactual_probabilities = np.max(self.model.predict_proba([counterfactual]), axis=1)
         return CounterfactualExplanation(
             input_vector=input_vector,
             counterfactuals=counterfactual,
@@ -126,4 +127,6 @@ class CERTIFAI(CounterfactualExplainerBase):
             actual_class=instance_class,
             counterfactual_target_class=counterfactual_target_class,
             counterfactual_predictions=counterfactual_predictions,
+            counterfactual_probabilities=counterfactual_probabilities,
+            graph=None,
         )

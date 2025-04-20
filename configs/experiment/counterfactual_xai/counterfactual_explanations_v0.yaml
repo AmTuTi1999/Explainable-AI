@@ -4,8 +4,8 @@ defaults:
   - override /data: heart_disease
   - override /model: tabular_models/heart_disease.yaml
   - override /explainers:
-      - mace.yaml
-      - face.yaml
+    #   - mace.yaml
+    #   - face.yaml
       #- clear.yaml
       - certifai.yaml
       - dice.yaml
