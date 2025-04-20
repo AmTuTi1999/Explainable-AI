@@ -118,10 +118,12 @@ class CERTIFAI(CounterfactualExplainerBase):
             search_space=search_space,
         )
         counterfactual = generator.evolve()
+        counterfactual_predictions = self.model.predict(counterfactual)
         return CounterfactualExplanation(
             input_vector=input_vector,
             counterfactuals=counterfactual,
             feature_names=self.feature_names,
             actual_class=instance_class,
-            counterfactual_target_class=counterfactual_target_class
+            counterfactual_target_class=counterfactual_target_class,
+            counterfactual_predictions=counterfactual_predictions,
         )

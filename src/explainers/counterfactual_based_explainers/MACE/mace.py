@@ -111,7 +111,7 @@ class MACE(CounterfactualExplainerBase):
         refined_counterfactuals =  gradient_less_descent(
             model_env.predict, input_vector.to_numpy(), selected_counterfactual_examples, self.max_search_radius, self.min_search_radius, self.refine_epochs, counterfactual_target_class
         )[:self.b]
-
+        counterfactual_predictions = self.model.predict(np.array(refined_counterfactuals))
         # TODO add representation function, returns dataframe, html, or something else: do research
 
         return CounterfactualExplanation(
@@ -120,7 +120,8 @@ class MACE(CounterfactualExplainerBase):
             feature_names=self.feature_names,
             actual_class=instance_class,
             counterfactual_target_class=counterfactual_target_class,
-            graph=None
+            graph=None,
+            counterfactual_predictions=counterfactual_predictions,
         )
     
         

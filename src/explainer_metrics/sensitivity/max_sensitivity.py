@@ -51,7 +51,6 @@ class MaxSensitivityMetric(ExplainerMetric):
         """
         X, y = data_batch
         X, y = X.numpy(), y.numpy()
-        print(f"X shape: {X.shape}, y shape: {y.shape}, explanations shape: {explanations.shape}")
         self._calculated_metrics = MaxSensitivity(nr_samples=self.nr_samples)(
             model=model,
             x_batch=X[:len(explanations), None],  # Add a new dimension at axis 1

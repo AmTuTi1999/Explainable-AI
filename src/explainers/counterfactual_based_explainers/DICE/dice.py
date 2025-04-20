@@ -57,8 +57,8 @@ class DICE(CounterfactualExplainerBase):
                 continuous_features=self.x_batch.columns.to_list(),
                 outcome_name='labels',
             )
-            self.model = dice_ml.Model(model=model, backend="PYT", model_type="classifier")
-            self.counterfactual_generator = dice_ml.Dice(data, self.model, method="random")
+            dice_model = dice_ml.Model(model=model, backend="PYT", model_type="classifier")
+            self.counterfactual_generator = dice_ml.Dice(data, dice_model, method="random")
                             
     def alias(self):
         return "DICE"
@@ -74,7 +74,7 @@ class DICE(CounterfactualExplainerBase):
             input_vector (_type_): _description_
             counterfactual_target_class (int or str, optional): _description_. Defaults to "opposite".
         """      
-        instance_class = 0
+        instance_class = self.model.predict(input_vector.to_frame().T)
         data = pd.DataFrame(np.array(input_vector).reshape(1,-1), columns=self.x_batch.columns.to_list())
         counterfactuals = self.counterfactual_generator.generate_counterfactuals(
              data, total_CFs=self.num_counterfactuals, desired_class=counterfactual_target_class
@@ -82,6 +82,7 @@ class DICE(CounterfactualExplainerBase):
         counterfactuals = counterfactuals.cf_examples_list[0].final_cfs_df
         counterfactuals = counterfactuals.drop(columns=['labels'])
         counterfactuals = counterfactuals.to_numpy()
+        counterfactual_predictions = self.model.predict(counterfactuals)
 
         return CounterfactualExplanation(
             input_vector=input_vector,
@@ -89,7 +90,8 @@ class DICE(CounterfactualExplainerBase):
             feature_names=self.x_batch.columns.to_list(),
             actual_class=instance_class,
             counterfactual_target_class=counterfactual_target_class,
-            graph=None
+            graph=None,
+            counterfactual_predictions=counterfactual_predictions,
         )
     
         

@@ -4,6 +4,7 @@ import hydra
 from pandas import DataFrame
 import logging
 from numpy.typing import NDArray
+from tqdm import tqdm   
 
 from src.models.tabularmodels import TabularNeuralNetworks
 from src.explainers.counterfactual_based_explainers.counterfactual_explainer_base import CounterfactualExplainerBase
@@ -131,14 +132,14 @@ def evaluate_explanations(
     Returns:
         Dictionary of evaluation metrics.
     """
-    logging.info("Instantiating Explainer Wrappers...")
+    logging.info("Instantiating Explainer Metrics...")
     all_metrics = {}
     for explainer_metric in cfg.explainer_metrics:
         explainer_metric: ExplainerMetric = hydra.utils.instantiate(
             cfg.explainer_metrics[explainer_metric],
         )
         metric_values = {}
-        for explainer_name, explainer_values in counterfactual_explanations.items():
+        for explainer_name, explainer_values in tqdm(counterfactual_explanations.items()):
             explainer_metric.init_explainer_metric(
                 model=model,
                 data_batch=data,

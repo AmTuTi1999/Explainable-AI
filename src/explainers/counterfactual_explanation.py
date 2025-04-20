@@ -14,6 +14,7 @@ class CounterfactualExplanation:
             actual_class: Union[int, str],
             counterfactual_target_class: Union[int, str],
             graph: nx.DiGraph = None,
+            counterfactual_predictions = None,
         ) -> None:
         """
         Initialize the CounterfactualExplanation class.
@@ -28,6 +29,8 @@ class CounterfactualExplanation:
         self.actual_class = actual_class
         self.counterfactual_target_class = counterfactual_target_class
         self._graph = graph
+        self.counterfactual_predictions = counterfactual_predictions
+
 
 
     def _get_changed_columns(self):

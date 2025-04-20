@@ -80,12 +80,14 @@ class CLEAR(CounterfactualExplainerBase):
                 best_b_counterfactual = b_counterfactuals[i]
                 best_estimated_b_counterfactual = estimated_b_counterfactuals[i]
                 best_fidelity_error = fidelity_error_value
+        counterfactual_predictions = self.model.predict(best_estimated_b_counterfactual)
         return CounterfactualExplanation(
             input_vector=input_vector,
             counterfactuals=best_estimated_b_counterfactual,
             feature_names=self.feature_names,
             actual_class=instance_class,
             counterfactual_target_class=counterfactual_target_class,
+            counterfactual_predictions=counterfactual_predictions,
         )
     
         
