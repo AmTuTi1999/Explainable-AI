@@ -3,6 +3,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from pathlib import Path
 
+import logging
+from tqdm import tqdm
+
 class TabularClassifiers(nn.Module):
     def __init__(
         self, 
@@ -25,9 +28,15 @@ class TabularClassifiers(nn.Module):
                 self.model.parameters(),
                 lr= model_param.learning_rate,
             )
-
+        elif model_param.optimizer == 'SGD':
+            self.optimizer = torch.optim.SGD(
+                self.model.parameters(),
+                lr= model_param.learning_rate,
+                momentum=model_param.momentum,
+            )
+            
     def fit(self, train_loader):
-        for epoch in range(self.model_param.epochs):
+        for epoch in tqdm(range(self.model_param.epochs)):
             self.model.train()
             running_loss = 0.0
             for _ , (features, labels) in enumerate(train_loader):
@@ -40,12 +49,12 @@ class TabularClassifiers(nn.Module):
                 self.optimizer.step()
 
                 running_loss += loss.item()
-
-            print(f"Epoch [{epoch+1}/{self.model_param.epochs}], Loss: {running_loss/len(train_loader):.4f}")
+            if epoch % 10 == 0:
+                logging.info(f"Epoch [{epoch+1}/{self.model_param.epochs}], Loss: {running_loss/len(train_loader):.4f}")
 
         # Save model
         torch.save(self.model.state_dict(), "heart_disease_model.pkl")
-        print("Model saved as heart_disease_model.pkl")
+        logging.warning("Model saved as heart_disease_model.pkl")
 
     def load_model_from_dict_state(self):
         """Load the model from the specified path.
@@ -79,6 +88,6 @@ class TabularClassifiers(nn.Module):
 
         accuracy = correct / total
         if total > 0:
-            print(f"{dataset_name} Accuracy: {accuracy * 100:.2f}%")
+            logging.info(f"{dataset_name} Accuracy: {accuracy * 100:.2f}%")
         else:
-            print("Undefined (no samples in dataset)")
+            raise ValueError("Undefined (no samples in dataset)")
